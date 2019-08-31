@@ -19,15 +19,11 @@ class MercurePublisher
 
     public function __invoke(Update $update)
     {
-        if ($this->queue) {
-            $job = new MercureJob($update, $this->queue);
+        $job = new MercureJob($update, $this->queue);
 
-            $this->dispatcher->dispatchToQueue($job);
-
-            return;
-        }
-
-        $this->dispatcher->dispatchNow($update);
+        $this->queue
+            ? $this->dispatcher->dispatchToQueue($job)
+            : $this->dispatcher->dispatchNow($job);
     }
 
     public function getQueue(): ?string

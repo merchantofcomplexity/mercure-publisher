@@ -4,8 +4,10 @@ declare(strict_types=1);
 namespace MerchantOfComplexity\MercurePublisher;
 
 use Assert\Assertion;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpKernel\TerminableInterface;
 
 class MercureAutoDiscover implements TerminableInterface
@@ -19,7 +21,16 @@ class MercureAutoDiscover implements TerminableInterface
         $this->mercureUrl = $mercureUrl;
     }
 
-    public function terminate(Request $request, Response $response)
+    public function handle(Request $request, Closure $next)
+    {
+        return $next($request);
+    }
+
+    /**
+     * @param SymfonyRequest $request
+     * @param SymfonyResponse $response
+     */
+    public function terminate(SymfonyRequest $request, SymfonyResponse $response)
     {
         if (!$response->isRedirection()) {
             $link = sprintf('<%s>; rel="mercure"', $this->mercureUrl);

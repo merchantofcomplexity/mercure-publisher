@@ -16,7 +16,7 @@ final class MercureJwtKey
         $this->jwt = $jwt;
     }
 
-    public function getKey(): string
+    public function __invoke(): string
     {
         return $this->jwt;
     }

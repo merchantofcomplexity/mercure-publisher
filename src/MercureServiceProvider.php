@@ -10,7 +10,7 @@ use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
 use Symfony\Component\Mercure\Publisher as SymfonyPublisher;
 
-class MercurePublisherServiceProvider extends ServiceProvider
+class MercureServiceProvider extends ServiceProvider
 {
     const MERCURE_CONFIG = 'mercure_publisher';
 
@@ -44,15 +44,22 @@ class MercurePublisherServiceProvider extends ServiceProvider
         $this->app->bind(MercurePublisher::class, function (Application $app): MercurePublisher {
             $queue = $app->get('config')->get('mercure_publisher')['queue'] ?? null;
 
-            return new MercurePublisher($app->get(QueueingDispatcher::class), $queue);
+            return new MercurePublisher($app->make(QueueingDispatcher::class), $queue);
         });
 
         $this->app->bind(SymfonyPublisher::class, function (Application $app) {
             $config = $app->get('config')->get('mercure_publisher');
 
-            $jwtProvider = $config['callable_kwt_provider'];
+            $jwtProvider = $config['jwt_provider'];
+            $jwtKey = $config['jwt'];
 
-            return new SymfonyPublisher($config['hub'], $app->make($jwtProvider));
+            return new SymfonyPublisher($config['hub'], new $jwtProvider($jwtKey));
+        });
+
+        $this->app->bind(MercureAutoDiscover::class, function(Application $app): MercureAutoDiscover{
+            $config = $app->get('config')->get('mercure_publisher');
+
+            return new MercureAutoDiscover($config['hub']);
         });
     }
 
