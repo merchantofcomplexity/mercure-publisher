@@ -10,5 +10,7 @@ return [
 
     'jwt_provider' => StaticJwtProvider::class,
 
+    'async_queue' => false,
+
     'auto_discover' => true
 ];

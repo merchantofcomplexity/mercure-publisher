@@ -26,13 +26,15 @@ class MercureServiceProvider extends ServiceProvider
     {
         $this->publishMercureConfiguration();
 
-        $config = $this->app->get('config')->get(self::MERCURE_CONFIG);
+        $config = config(self::MERCURE_CONFIG);
 
         if (empty($config)) {
             throw new InvalidArgumentException("Unable to load Mercure publisher configuration");
         }
 
         if ($autoDiscover = $config['auto_discover'] ?? false) {
+            $this->registerMercureAutoDiscoverMiddleware();
+
             $kernel->pushMiddleware(MercureAutoDiscover::class);
         }
     }
@@ -41,23 +43,43 @@ class MercureServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom($this->getConfigPath(), self::MERCURE_CONFIG);
 
+        $this->registerMercurePublisher();
+
+        $this->registerSymfonyPublisher();
+    }
+
+    protected function registerMercurePublisher(): void
+    {
         $this->app->bind(MercurePublisher::class, function (Application $app): MercurePublisher {
-            $queue = $app->get('config')->get('mercure_publisher')['queue'] ?? null;
+            $asyncQueue = config('mercure_publisher.async_queue', null);
 
-            return new MercurePublisher($app->make(QueueingDispatcher::class), $queue);
+            if (!$asyncQueue || empty($asyncQueue) || "" === $asyncQueue) {
+                $asyncQueue = null;
+            }
+
+            return new MercurePublisher($app->make(QueueingDispatcher::class), $asyncQueue);
         });
+    }
 
+    protected function registerSymfonyPublisher(): void
+    {
         $this->app->bind(SymfonyPublisher::class, function (Application $app) {
-            $config = $app->get('config')->get('mercure_publisher');
+            $config = config('mercure_publisher');
 
             $jwtProvider = $config['jwt_provider'];
-            $jwtKey = $config['jwt'];
 
-            return new SymfonyPublisher($config['hub'], new $jwtProvider($jwtKey));
+            $jwtProvider = $app->bound($jwtProvider)
+                ? $app->make($jwtProvider)
+                : new $jwtProvider($config['jwt']);
+
+            return new SymfonyPublisher($config['hub'], $jwtProvider);
         });
+    }
 
-        $this->app->bind(MercureAutoDiscover::class, function(Application $app): MercureAutoDiscover{
-            $config = $app->get('config')->get('mercure_publisher');
+    protected function registerMercureAutoDiscoverMiddleware(): void
+    {
+        $this->app->bind(MercureAutoDiscover::class, function (): MercureAutoDiscover {
+            $config = config('mercure_publisher');
 
             return new MercureAutoDiscover($config['hub']);
         });
